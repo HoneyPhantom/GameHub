@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameHub | Ultimate Launcher</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">GameHub</span>
+            </div>
+            
+            <nav class="menu">
+                <button class="menu-item active" onclick="location.reload()">
+                    <span class="icon">🏠</span> <span class="label">Home</span>
+                </button>
+                <button class="menu-item">
+                    <span class="icon">⚙️</span> <span class="label">Settings</span>
+                </button>
+            </nav>
+
+            <div class="user-card">
+                <div class="avatar"></div>
+                <div class="user-info">
+                    <p class="username">Guest_Player</p>
+                    <p class="status">System Online</p>
+                </div>
+            </div>
+        </aside>
+
+        <main class="viewport">
+            
+            <section id="library-view" class="content-view">
+                <div class="hero">
+                    <div class="hero-content">
+                        <span class="accent-tag">SYSTEM READY</span>
+                        <h1>WELCOME TO THE HUB</h1>
+                        <p>Challenge your brains here.</p>
+                    </div>
+                </div>
+
+                <div class="section-bar">
+                    <h2>Your Uploads</h2>
+                </div>
+
+                <div id="game-grid" class="game-grid">
+                    </div>
+            </section>
+
+            <section id="stage-view" class="content-view hidden">
+                <div class="stage-header">
+                    <button class="btn-back" onclick="exitToHub()">← EXIT TO HUB</button>
+                    <h2 id="active-game-title">GAME TITLE</h2>
+                </div>
+                
+                <div class="game-window">
+                    <div id="game-mount">
+                        </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

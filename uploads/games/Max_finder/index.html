@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Max-Finder Challenge</title>
+    <style>
+        :root {
+            --bg: #0f172a; --card: #1e293b; --primary: #38bdf8;
+            --secondary: #818cf8; --accent: #f472b6; --text: #f1f5f9;
+            --selection: rgba(56, 189, 248, 0.2);
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; padding: 20px; margin: 0; min-height: 100vh; }
+        .game-card { background: var(--card); padding: 2rem; border-radius: 24px; width: 100%; max-width: 700px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); }
+        
+        /* Difficulty Tabs */
+        .difficulty-row { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
+        .diff-btn { background: #334155; border: none; color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; transition: 0.3s; }
+        .diff-btn.active { background: var(--primary); font-weight: bold; }
+
+        /* Grid System */
+        .array-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 8px; margin: 25px 0; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 12px; }
+        .cell { height: 40px; background: #334155; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; transition: 0.2s; font-size: 0.8rem; border: 2px solid transparent; }
+        .cell:hover { background: #475569; border-color: var(--secondary); }
+        .cell.selected { background: var(--selection); border-color: var(--primary); }
+        .cell.in-range { background: var(--primary); color: #0f172a; font-weight: bold; box-shadow: 0 0 15px var(--primary); }
+        .cell.is-max { background: var(--accent) !important; color: white; transform: scale(1.1); }
+
+        /* Status & Logs */
+        .stats-bar { display: flex; justify-content: space-between; font-weight: 600; color: var(--primary); margin-bottom: 10px; }
+        .log-box { background: #0f172a; height: 100px; overflow-y: auto; border-radius: 12px; padding: 10px; font-family: monospace; font-size: 0.85rem; margin-bottom: 20px; border-left: 4px solid var(--secondary); }
+        
+        .controls { display: flex; gap: 10px; }
+        button.main-btn { flex: 1; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .query-btn { background: var(--secondary); color: white; }
+        .guess-btn { background: var(--accent); color: white; }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+        
+        .instruction { text-align: center; color: #94a3b8; font-size: 0.9rem; margin-top: 10px; }
+        #best-score {
+          text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+          font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-card">
+    <h1 style="text-align: center; margin-bottom: 5px;">🎯 Max-Finder</h1>
+    <div class="difficulty-row" id="diff-selector">
+        <button class="diff-btn active" onclick="setDiff(10, this)">Easy (10)</button>
+        <button class="diff-btn" onclick="setDiff(25, this)">Medium (25)</button>
+        <button class="diff-btn" onclick="setDiff(50, this)">Hard (50)</button>
+    </div>
+
+    <div class="stats-bar">
+        <span>Queries: <span id="q-count">0</span></span>
+        <span>Best<span id="best-size"></span>: <span id="best-score" style="color:var(--success)">-</span></span>
+        <span id="game-status">Select Start Index</span>
+    </div>
+
+    <div class="array-grid" id="grid"></div>
+
+    <div class="log-box" id="log">Welcome! Click two cells to define a range.</div>
+
+    <div class="controls">
+        <button id="btn-query" class="main-btn query-btn" onclick="runQuery()" disabled>Query [L, R]</button>
+        <button id="btn-guess" class="main-btn guess-btn" onclick="runGuess()" disabled>Guess as Max</button>
+    </div>
+    <p class="instruction">Goal: Find the true Max index (1-based) using the 2nd-Max hints.</p>
+</div>
+
+<script>
+    let n = 10;
+    let hiddenArray = [];
+    let queries = 0;
+    let selectedIndices = []; // Stores the 1-based indices clicked
+
+    function setDiff(size, btn) {
+        n = size;
+        document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        initGame();
+    }
+
+    function initGame() {
+      
+        const best = localStorage.getItem(`best-maxfinder-${n}`);
+        document.getElementById('best-score').innerText = best ? best : "-";
+        
+        queries = 0;
+        selectedIndices = [];
+        document.getElementById('q-count').innerText = "0";
+        document.getElementById('log').innerHTML = "Game Reset. Select your first index.";
+        updateButtons();
+        
+        // Generate random unique array
+        hiddenArray = Array.from({length: n}, (_, i) => i + 1);
+        for (let i = n - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [hiddenArray[i], hiddenArray[j]] = [hiddenArray[j], hiddenArray[i]];
+        }
+
+        renderGrid();
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+        for (let i = 1; i <= n; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.id = `c-${i}`;
+            cell.innerText = i;
+            cell.onclick = () => handleCellClick(i);
+            grid.appendChild(cell);
+        }
+    }
+
+    function handleCellClick(idx) {
+        if (selectedIndices.length >= 2) selectedIndices = [];
+        
+        selectedIndices.push(idx);
+        selectedIndices.sort((a, b) => a - b);
+        
+        refreshHighlights();
+        updateButtons();
+    }
+
+    function refreshHighlights() {
+        document.querySelectorAll('.cell').forEach(c => c.className = 'cell');
+        
+        if (selectedIndices.length === 1) {
+            document.getElementById(`c-${selectedIndices[0]}`).classList.add('selected');
+            document.getElementById('game-status').innerText = "Select End Index";
+        } else if (selectedIndices.length === 2) {
+            for (let i = selectedIndices[0]; i <= selectedIndices[1]; i++) {
+                document.getElementById(`c-${i}`).classList.add('in-range');
+            }
+            document.getElementById(`c-${selectedIndices[0]}`).classList.add('selected');
+            document.getElementById(`c-${selectedIndices[1]}`).classList.add('selected');
+            document.getElementById('game-status').innerText = "Range Locked";
+        }
+    }
+
+    function updateButtons() {
+        const hasRange = selectedIndices.length === 2 && selectedIndices[0] !== selectedIndices[1];
+        const hasOne = selectedIndices.length === 1;
+        document.getElementById('btn-query').disabled = !hasRange;
+        document.getElementById('btn-guess').disabled = !hasOne;
+    }
+
+    function runQuery() {
+        const [l, r] = selectedIndices;
+        let sub = [];
+        for (let i = l - 1; i < r; i++) {
+            sub.push({ val: hiddenArray[i], idx: i + 1 });
+        }
+        sub.sort((a, b) => b.val - a.val);
+        const smax = sub[1].idx;
+
+        queries++;
+        document.getElementById('q-count').innerText = queries;
+        addLog(`Query [${l}, ${r}]: Second Max is at <strong>Index ${smax}</strong>`);
+        
+        selectedIndices = [];
+        refreshHighlights();
+        updateButtons();
+    }
+
+    function runGuess() {
+        
+        const guessIdx = selectedIndices[0];
+        const maxVal = Math.max(...hiddenArray);
+        const actualIdx = hiddenArray.indexOf(maxVal) + 1;
+
+        if (guessIdx === actualIdx) {
+            const currentBest = localStorage.getItem(`best-maxfinder-${n}`);
+            if (!currentBest || queries < parseInt(currentBest)) {
+              localStorage.setItem(`best-maxfinder-${n}`, queries);
+              addLog(`<span style="color:var(--success)">⭐ NEW RECORD: ${queries} queries!</span>`);
+            }
+            
+            addLog(`<span style="color:var(--success)">🏆 CORRECT! Max was at ${actualIdx}. Resetting...in 5</span>`);
+            document.getElementById(`c-${actualIdx}`).classList.add('is-max');
+            setTimeout(initGame, 5000);
+        } else {
+            addLog(`<span style="color:var(--accent)">❌ WRONG! Max was at ${actualIdx}. Try again!</span>`);
+            initGame();
+        }
+    }
+
+    function addLog(msg) {
+        const log = document.getElementById('log');
+        log.innerHTML = `<div>> ${msg}</div>` + log.innerHTML;
+    }
+
+    initGame();
+</script>
+</body>
+</html>
